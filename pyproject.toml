@@ -1,0 +1,90 @@
+[project]
+name = "compliance-review-agent"
+version = "0.1.0"
+description = "POC 0 - AI-powered compliance review agent for Microsoft Global Ads (zero-cost local stack)"
+requires-python = ">=3.11"
+
+dependencies = [
+    # API
+        "fastapi>=0.111.0",
+            "uvicorn[standard]>=0.29.0",
+                "python-multipart>=0.0.9",
+                    "httpx>=0.27.0",
+
+                        # Data validation & settings
+                            "pydantic>=2.7.0",
+                                "pydantic-settings>=2.2.0",
+
+                                    # LLM - unified interface (free, MIT license)
+                                        # POC 0: routes to Ollama (local, zero cost)
+                                            # POC 1: swap env var to Azure OpenAI (no code changes)
+                                                "litellm>=1.40.0",
+
+                                                    # Vector store - ChromaDB (local, zero cost for POC 0)
+                                                        "chromadb>=0.5.0",
+
+                                                            # Database - SQLAlchemy async + Alembic migrations
+                                                                "sqlalchemy[asyncio]>=2.0.0",
+                                                                    "alembic>=1.13.0",
+                                                                        "aiosqlite>=0.20.0",       # POC 0: SQLite driver
+                                                                            # "asyncpg>=0.29.0",       # POC 1: PostgreSQL driver (uncomment)
+
+                                                                                # Logging
+                                                                                    "structlog>=24.1.0",
+
+                                                                                        # Document ingestion
+                                                                                            "pypdf>=4.2.0",            # PDF parsing
+                                                                                                "python-docx>=1.1.0",      # Word documents
+                                                                                                    "python-pptx>=0.6.23",     # PowerPoint
+                                                                                                        "pillow>=10.3.0",          # Images: PNG, JPEG, GIF
+                                                                                                            "opencv-python>=4.9.0",    # MP4 video frame extraction
+                                                                                                                "beautifulsoup4>=4.12.0",  # HTML5 parsing
+                                                                                                                    "lxml>=5.2.0",
+                                                                                                                    
+                                                                                                                        # Chunking / tokenization
+                                                                                                                            "tiktoken>=0.7.0",
+                                                                                                                            
+                                                                                                                                # Redis (optional async job queue)
+                                                                                                                                    "redis>=5.0.0",
+                                                                                                                                        "aiofiles>=23.2.0",
+                                                                                                                                        ]
+                                                                                                                                        
+                                                                                                                                        [project.optional-dependencies]
+                                                                                                                                        dev = [
+                                                                                                                                            "pytest>=8.2.0",
+                                                                                                                                                "pytest-asyncio>=0.23.0",
+                                                                                                                                                    "pytest-cov>=5.0.0",
+                                                                                                                                                        "httpx>=0.27.0",
+                                                                                                                                                            "ruff>=0.4.0",
+                                                                                                                                                                "mypy>=1.10.0",
+                                                                                                                                                                    "ipykernel>=6.29.0",
+                                                                                                                                                                        "notebook>=7.2.0",
+                                                                                                                                                                        ]
+                                                                                                                                                                        
+                                                                                                                                                                        [build-system]
+                                                                                                                                                                        requires = ["hatchling"]
+                                                                                                                                                                        build-backend = "hatchling.build"
+                                                                                                                                                                        
+                                                                                                                                                                        [tool.ruff]
+                                                                                                                                                                        line-length = 100
+                                                                                                                                                                        target-version = "py311"
+                                                                                                                                                                        select = ["E", "W", "F", "I", "B", "C4", "UP"]
+                                                                                                                                                                        ignore = ["E501"]
+                                                                                                                                                                        
+                                                                                                                                                                        [tool.ruff.format]
+                                                                                                                                                                        quote-style = "double"
+                                                                                                                                                                        
+                                                                                                                                                                        [tool.mypy]
+                                                                                                                                                                        python_version = "3.11"
+                                                                                                                                                                        strict = false
+                                                                                                                                                                        ignore_missing_imports = true
+                                                                                                                                                                        
+                                                                                                                                                                        [tool.pytest.ini_options]
+                                                                                                                                                                        asyncio_mode = "auto"
+                                                                                                                                                                        testpaths = ["tests"]
+                                                                                                                                                                        env = [
+                                                                                                                                                                            "ENV=test",
+                                                                                                                                                                                "LLM_MODEL=ollama/llama3",
+                                                                                                                                                                                    "VECTOR_STORE=chroma",
+                                                                                                                                                                                        "DATABASE_URL=sqlite+aiosqlite:///./test.db",
+                                                                                                                                                                                        ]

@@ -1,0 +1,88 @@
+# POC 0 - Zero Cost Local Stack
+# Run: docker compose up
+# All services run locally - no cloud spend
+
+services:
+
+  # ── FastAPI Application ───────────────────────────────
+    api:
+        build:
+              context: .
+                    dockerfile: docker/Dockerfile.dev
+                        container_name: compliance-api
+                            ports:
+                                  - "8000:8000"
+                                      volumes:
+                                            - .:/app                        # Hot reload from local filesystem
+                                                  - ./data:/app/data              # Persist SQLite DB and ChromaDB
+                                                      env_file:
+                                                            - .env
+                                                                environment:
+                                                                      - ENV=local
+                                                                            - LLM_BASE_URL=http://ollama:11434
+                                                                                  - REDIS_URL=redis://redis:6379/0
+                                                                                      depends_on:
+                                                                                            ollama:
+                                                                                                    condition: service_started
+                                                                                                          redis:
+                                                                                                                  condition: service_healthy
+                                                                                                                      networks:
+                                                                                                                            - compliance-net
+                                                                                                                                restart: unless-stopped
+                                                                                                                                
+                                                                                                                                  # ── Ollama - Local LLM (zero cost) ───────────────────
+                                                                                                                                    ollama:
+                                                                                                                                        image: ollama/ollama:latest
+                                                                                                                                            container_name: compliance-ollama
+                                                                                                                                                ports:
+                                                                                                                                                      - "11434:11434"
+                                                                                                                                                          volumes:
+                                                                                                                                                                - ollama_data:/root/.ollama     # Persist downloaded models
+                                                                                                                                                                    networks:
+                                                                                                                                                                          - compliance-net
+                                                                                                                                                                              restart: unless-stopped
+                                                                                                                                                                                  # GPU support (optional - uncomment if you have NVIDIA GPU)
+                                                                                                                                                                                      # deploy:
+                                                                                                                                                                                          #   resources:
+                                                                                                                                                                                              #     reservations:
+                                                                                                                                                                                                  #       devices:
+                                                                                                                                                                                                      #         - driver: nvidia
+                                                                                                                                                                                                          #           count: 1
+                                                                                                                                                                                                              #           capabilities: [gpu]
+                                                                                                                                                                                                              
+                                                                                                                                                                                                                # ── Redis - Async job queue & caching ────────────────
+                                                                                                                                                                                                                  redis:
+                                                                                                                                                                                                                      image: redis:7-alpine
+                                                                                                                                                                                                                          container_name: compliance-redis
+                                                                                                                                                                                                                              ports:
+                                                                                                                                                                                                                                    - "6379:6379"
+                                                                                                                                                                                                                                        volumes:
+                                                                                                                                                                                                                                              - redis_data:/data
+                                                                                                                                                                                                                                                  networks:
+                                                                                                                                                                                                                                                        - compliance-net
+                                                                                                                                                                                                                                                            restart: unless-stopped
+                                                                                                                                                                                                                                                                healthcheck:
+                                                                                                                                                                                                                                                                      test: ["CMD", "redis-cli", "ping"]
+                                                                                                                                                                                                                                                                            interval: 10s
+                                                                                                                                                                                                                                                                                  timeout: 5s
+                                                                                                                                                                                                                                                                                        retries: 3
+                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                          # ── ChromaDB - Vector store UI (optional) ────────────
+                                                                                                                                                                                                                                                                                            # Uncomment to get a visual UI for ChromaDB at http://localhost:3000
+                                                                                                                                                                                                                                                                                              # chromadb:
+                                                                                                                                                                                                                                                                                                #   image: ghcr.io/chroma-core/chroma:latest
+                                                                                                                                                                                                                                                                                                  #   container_name: compliance-chroma
+                                                                                                                                                                                                                                                                                                    #   ports:
+                                                                                                                                                                                                                                                                                                      #     - "8001:8000"
+                                                                                                                                                                                                                                                                                                        #   volumes:
+                                                                                                                                                                                                                                                                                                          #     - ./data/chroma_db:/chroma/chroma
+                                                                                                                                                                                                                                                                                                            #   networks:
+                                                                                                                                                                                                                                                                                                              #     - compliance-net
+                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                              volumes:
+                                                                                                                                                                                                                                                                                                                ollama_data:
+                                                                                                                                                                                                                                                                                                                  redis_data:
+                                                                                                                                                                                                                                                                                                                  
+                                                                                                                                                                                                                                                                                                                  networks:
+                                                                                                                                                                                                                                                                                                                    compliance-net:
+                                                                                                                                                                                                                                                                                                                        driver: bridge

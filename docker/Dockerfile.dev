@@ -1,0 +1,32 @@
+# POC 0 - Development image with hot reload
+FROM python:3.11-slim
+
+# Install uv (fast Python package manager)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Install system dependencies for document/media processing
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+        libglib2.0-0 \
+            libsm6 \
+                libxext6 \
+                    libxrender-dev \
+                        libgomp1 \
+                            && rm -rf /var/lib/apt/lists/*
+
+                            WORKDIR /app
+
+                            # Install Python dependencies (cached layer)
+                            COPY pyproject.toml ./
+                            RUN uv sync --dev
+
+                            # Copy source (overridden by volume mount in docker-compose)
+                            COPY . .
+
+                            # Create data directories
+                            RUN mkdir -p data/chroma_db data/uploads
+
+                            EXPOSE 8000
+
+                            # Hot reload enabled for development
+                            CMD ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
